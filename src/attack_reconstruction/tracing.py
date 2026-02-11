@@ -36,12 +36,12 @@ def get_new_stats(tw_to_info,
 
                 if nid not in node_results:
                     node_results[nid] = {}
-                node_results[nid]['score'] = score
+                node_results[nid]['score'] = max(score, node_results[nid].get('score', 0))
                 node_results[nid]['y_true'] = y_true
                 if int(tw) in tw_to_info:
-                    node_results[nid]['y_hat'] = int(str(nid) in tw_to_info[int(tw)]['subgraph_nodes'])
+                    node_results[nid]['y_hat'] = int(int(str(nid) in tw_to_info[int(tw)]['subgraph_nodes']) or node_results[nid].get('y_hat', 0))
                 else:
-                    node_results[nid]['y_hat'] = 0
+                    node_results[nid]['y_hat'] = node_results[nid].get('y_hat', 0)
 
         flat_y_truth = []
         flat_y_hat = []
