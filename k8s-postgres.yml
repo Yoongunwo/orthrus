@@ -5,71 +5,39 @@ kind: ConfigMap
 metadata:
   name: postgres-init-scripts
 data:
-  init-create-databases.sh: |
+  # 01: 먼저 빈 데이터베이스 생성
+  01-create-databases.sh: |
     #!/bin/bash
     set -e
 
-    echo "Starting database and table creation..."
+    echo "Creating empty databases..."
 
     for dataset in clearscope_e3 cadets_e3 theia_e3 clearscope_e5 cadets_e5 theia_e5
     do
         DATASET_NAME=$(echo "$dataset" | tr '[:upper:]' '[:lower:]')
-        echo "Creating database and tables for: $DATASET_NAME"
-
-        psql -U postgres <<EOF
-    CREATE DATABASE $DATASET_NAME;
-    \c $DATASET_NAME;
-
-    CREATE TABLE event_table (
-        src_node VARCHAR,
-        src_index_id VARCHAR,
-        operation VARCHAR,
-        dst_node VARCHAR,
-        dst_index_id VARCHAR,
-        event_uuid VARCHAR NOT NULL,
-        timestamp_rec BIGINT,
-        _id SERIAL PRIMARY KEY
-    );
-    ALTER TABLE event_table OWNER TO postgres;
-    CREATE UNIQUE INDEX event_table__id_uindex ON event_table (_id);
-    GRANT DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON event_table TO postgres;
-
-    CREATE TABLE file_node_table (
-        node_uuid VARCHAR NOT NULL,
-        hash_id VARCHAR NOT NULL,
-        path VARCHAR,
-        index_id BIGINT,
-        PRIMARY KEY (node_uuid, hash_id)
-    );
-    ALTER TABLE file_node_table OWNER TO postgres;
-
-    CREATE TABLE netflow_node_table (
-        node_uuid VARCHAR NOT NULL,
-        hash_id VARCHAR NOT NULL,
-        src_addr VARCHAR,
-        src_port VARCHAR,
-        dst_addr VARCHAR,
-        dst_port VARCHAR,
-        index_id BIGINT,
-        PRIMARY KEY (node_uuid, hash_id)
-    );
-    ALTER TABLE netflow_node_table OWNER TO postgres;
-
-    CREATE TABLE subject_node_table (
-        node_uuid VARCHAR,
-        hash_id VARCHAR,
-        path VARCHAR,
-        cmd VARCHAR,
-        index_id BIGINT,
-        PRIMARY KEY (node_uuid, hash_id)
-    );
-    ALTER TABLE subject_node_table OWNER TO postgres;
-    EOF
-
-        echo "Database '$DATASET_NAME' and tables created successfully!"
+        echo "Creating database: $DATASET_NAME"
+        psql -U postgres -c "CREATE DATABASE $DATASET_NAME;"
+        echo "Database '$DATASET_NAME' created."
     done
 
-    echo "All databases and tables created successfully!"
+    echo "All databases created."
+
+  # 02: /data/*.dump 파일을 각 데이터베이스에 restore
+  02-restore-dumps.sh: |
+    #!/bin/bash
+    set -e
+
+    echo "Starting dump restore from /data/..."
+
+    for dump_file in /data/*.dump; do
+        [ -e "$dump_file" ] || { echo "No dump files found in /data/. Skipping restore."; exit 0; }
+        db_name=$(basename "$dump_file" .dump)
+        echo "Restoring $dump_file into database '$db_name'..."
+        pg_restore -U postgres -d "$db_name" "$dump_file" || echo "Warning: restore of $db_name had errors (may be partial)"
+        echo "Restored '$db_name' successfully."
+    done
+
+    echo "All dumps restored."
 
 ---
 # PersistentVolume: hostPath 기반 (노드 로컬 디스크)
