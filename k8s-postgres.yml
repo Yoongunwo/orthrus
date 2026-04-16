@@ -194,7 +194,7 @@ spec:
             defaultMode: 0755
         - name: input-data
           hostPath:
-            path: /home/s3lab/ygw/Data/Darpa/orthrus
+            path: /home/s3lab/ygw/fourth_research/Data/Darpa/orthros
 
 ---
 # Service: ClusterIP — 같은 클러스터 내 Pod에서 "postgres" 호스트명으로 접근 가능
