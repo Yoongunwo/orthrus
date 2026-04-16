@@ -1,5 +1,12 @@
 # For Me
 
+Dependencies
+- python 3.9
+
+Install packages
+```
+./create_env.sh
+```
 ---
 
 [![DOI](https://zenodo.org/badge/852328574.svg)](https://doi.org/10.5281/zenodo.14641605)
