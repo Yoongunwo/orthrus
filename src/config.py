@@ -291,6 +291,8 @@ def get_default_cfg(args):
      cfg.dataset.name = args.dataset
      for attr, value in DATASET_DEFAULT_CONFIG[cfg.dataset.name].items():
           setattr(cfg.dataset, attr, value)
+
+     cfg._train_ratio = args.train_ratio
      
      # Tasks: we create nested None variables for all arguments
      def create_cfg_recursive(cfg, task_args_dict: dict):
@@ -317,6 +319,7 @@ def get_runtime_required_args(return_unknown_args=False, args=None):
      parser.add_argument('--run_from_training', action="store_true", help="Runs Orthrus from training when graphs are arleady preprocessed")
      parser.add_argument('--from_weights', action="store_true", help="Whether to load Orthrus from pkl weights")
      parser.add_argument('--seed', type=int, default=0, help="Manual seed")
+     parser.add_argument('--train_ratio', type=float, default=1.0, help="Ratio of train_files to use (0.0~1.0), sequentially from the front")
 
      parser.add_argument('--show_attack', type=int, help="Number of attack for plotting", default=0)
      parser.add_argument('--gt_type', type=str, help="Type of ground truth", default="orthrus")

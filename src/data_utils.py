@@ -49,7 +49,49 @@ def load_data_set(cfg, path: str, split: str) -> list[TemporalData]:
         data_list = extract_msg_node_type_only(data_list, cfg)
     else:
         data_list = extract_msg_from_data(data_list, cfg)
+
+    if split == "train" and cfg._train_ratio < 1.0:
+        data_list = _apply_train_ratio(data_list, cfg._train_ratio)
+
     return data_list
+
+
+def _apply_train_ratio(data_list: list, ratio: float) -> list:
+    """
+    Sequentially truncate train edges to the first `ratio` fraction of total edges.
+    Whole graphs are kept until the target is reached; the last graph is sliced.
+    """
+    total_edges = sum(g.src.shape[0] for g in data_list)
+    target = max(1, int(total_edges * ratio))
+
+    result, accumulated = [], 0
+    for g in data_list:
+        n = g.src.shape[0]
+        if accumulated >= target:
+            break
+        if accumulated + n <= target:
+            result.append(g)
+            accumulated += n
+        else:
+            keep = target - accumulated
+            result.append(_slice_graph(g, keep))
+            accumulated = target
+            break
+
+    print(f"train_ratio={ratio}: using {accumulated}/{total_edges} edges ({accumulated/total_edges*100:.1f}%)")
+    return result
+
+
+def _slice_graph(g, n: int):
+    """Slice the first n edges from a TemporalData graph."""
+    sliced = TemporalData()
+    for attr in ["src", "dst", "t", "msg", "edge_type", "x_src", "x_dst", "edge_feats"]:
+        val = getattr(g, attr, None)
+        if val is not None:
+            setattr(sliced, attr, val[:n])
+    if g.edge_index is not None:
+        sliced.edge_index = g.edge_index[:, :n]
+    return sliced
 
 def extract_msg_node_type_only(data_set: list[TemporalData], cfg) -> list[TemporalData]:
     """
