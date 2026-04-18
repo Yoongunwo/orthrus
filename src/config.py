@@ -372,6 +372,8 @@ def set_task_paths(cfg):
                restart_values = flatten_arg_values(subtask_cfg)
 
                clean_hash_args = ["".join([c for c in str(restart_value) if c not in set(" []\"\'")]) for restart_value in restart_values]
+               if subtask_name == "gnn_training":
+                    clean_hash_args.append(f"train_ratio={cfg._train_ratio}")
                final_hash_string = ",".join(clean_hash_args)
                final_hash_string = hashlib.sha256(final_hash_string.encode("utf-8")).hexdigest()
                
