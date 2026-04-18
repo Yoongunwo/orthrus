@@ -7,6 +7,50 @@ Install packages
 ```
 ./create_env.sh
 ```
+
+# My Process
+- Model Drift 확인을 위해 train_ratio argument 생성 및 그에 따른 모델 성능 평가
+
+### Model Train
+Example
+```
+PYTHONHASHSEED=0 python src/orthrus.py CADETS_E3 \
+  --detection.gnn_training.encoder.graph_attention.dropout=0.25 \
+  --detection.gnn_training.node_hid_dim=256 \
+  --detection.gnn_training.node_out_dim=256 \
+  --detection.gnn_training.lr=0.001 \
+  --detection.gnn_training.num_epochs=20 \
+  --seed=4
+  --train_ratio=0.10
+
+```
+
+### Model Evaluation
+Example:
+```
+PYTHONHASHSEED=0 python src/orthrus.py CADETS_E3 \
+  --from_weights \
+  --detection.gnn_training.encoder.graph_attention.dropout=0.25 \
+  --detection.gnn_training.node_hid_dim=256 \
+  --detection.gnn_training.node_out_dim=256 \
+  --detection.gnn_training.lr=0.001 \
+  --detection.gnn_training.num_epochs=20 \
+  --seed=4
+  --train_ratio=0.10
+```
+
+### Fix Save Path
+Example:
+```
+artifacts/
+  graph_construction/CADETS_E3/build_graphs/tw15.0__root/
+  edge_featurization/CADETS_E3/embed_nodes/dim128_feature_word2vec__a1b2c3d4/
+  edge_featurization/CADETS_E3/embed_edges/embed_edges__e5f6a7b8/
+  detection/gnn_training/ep20_lr0.001_hid256_out256_drop0.25_ratio0.25__c9d0e1f2/CADETS_E3/
+  detection/gnn_testing/thr_str__12345678/CADETS_E3/
+  detection/evaluation/node_evaluation_darpa__abcd1234/CADETS_E3/
+```
+
 ---
 
 [![DOI](https://zenodo.org/badge/852328574.svg)](https://doi.org/10.5281/zenodo.14641605)
