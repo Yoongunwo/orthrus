@@ -360,44 +360,59 @@ def overwrite_cfg_with_args(cfg, args):
                     cfg_ptr = getattr(cfg_ptr, attr)
                setattr(cfg_ptr, attr_name, value)
 
+def _make_readable_tag(subtask_name, subtask_cfg, cfg):
+     """Human-readable directory name per subtask. Upstream uniqueness handled by dep_hash suffix."""
+     if subtask_name == "build_graphs":
+          return f"tw{subtask_cfg.time_window_size}"
+     elif subtask_name == "embed_nodes":
+          return f"dim{subtask_cfg.emb_dim}_{subtask_cfg.used_method}"
+     elif subtask_name == "embed_edges":
+          return "embed_edges"
+     elif subtask_name == "gnn_training":
+          drop = subtask_cfg.encoder.graph_attention.dropout
+          return (f"ep{subtask_cfg.num_epochs}_lr{subtask_cfg.lr}"
+                  f"_hid{subtask_cfg.node_hid_dim}_out{subtask_cfg.node_out_dim}"
+                  f"_drop{drop}_ratio{cfg._train_ratio}")
+     elif subtask_name == "gnn_testing":
+          return f"thr_{subtask_cfg.threshold_method}"
+     elif subtask_name == "evaluation":
+          return f"{subtask_cfg.used_method}_{subtask_cfg.ground_truth_version}"
+     elif subtask_name == "tracing":
+          return f"{subtask_cfg.used_method}"
+     return subtask_name
+
+
 def set_task_paths(cfg):
-     subtask_to_hash = {}
-     # Directories common to all tasks
+     subtask_to_own_hash = {}
+     # Step 1: compute each subtask's own config hash (for upstream dep tracking only)
      for task, subtask in TASK_ARGS.items():
           task_cfg = getattr(cfg, task)
-
-          # We first compute a unique hash for each usbtask
           for subtask_name, subtask_args in subtask.items():
                subtask_cfg = getattr(task_cfg, subtask_name)
                restart_values = flatten_arg_values(subtask_cfg)
-
-               clean_hash_args = ["".join([c for c in str(restart_value) if c not in set(" []\"\'")]) for restart_value in restart_values]
+               clean_hash_args = ["".join([c for c in str(v) if c not in set(" []\"\'")]) for v in restart_values]
                if subtask_name == "gnn_training":
                     clean_hash_args.append(f"train_ratio={cfg._train_ratio}")
-               final_hash_string = ",".join(clean_hash_args)
-               final_hash_string = hashlib.sha256(final_hash_string.encode("utf-8")).hexdigest()
-               
-               subtask_to_hash[subtask_name] = final_hash_string
+               subtask_to_own_hash[subtask_name] = hashlib.sha256(",".join(clean_hash_args).encode("utf-8")).hexdigest()
 
-     # Then, for each subtask, we want its unique hash to also depend from its previous dependencies' hashes.
-     # For example, if I run the same subtask A two times, with two different subtasks B and C, the results
-     # would be different and would be stored in the same folder A if we don't consider the hash of B and C.
+     # Step 2: build path = readable_tag__dep_short_hash
      for task, subtask in TASK_ARGS.items():
           task_cfg = getattr(cfg, task)
           for subtask_name, subtask_args in subtask.items():
                subtask_cfg = getattr(task_cfg, subtask_name)
+
                deps = sorted(list(get_dependees(subtask_name, TASK_DEPENDENCIES, set())))
-               deps_hash = "".join([subtask_to_hash[dep] for dep in deps])
-               
-               final_hash_string = deps_hash + subtask_to_hash[subtask_name]
-               final_hash_string = hashlib.sha256(final_hash_string.encode("utf-8")).hexdigest()
-               
+               deps_hash_str = "".join([subtask_to_own_hash[dep] for dep in deps])
+               dep_short = hashlib.sha256(deps_hash_str.encode("utf-8")).hexdigest()[:8] if deps_hash_str else "root"
+
+               readable_tag = _make_readable_tag(subtask_name, subtask_cfg, cfg)
+               dir_name = f"{readable_tag}__{dep_short}"
+
                if task in ["graph_construction", "edge_featurization"]:
-                    subtask_cfg._task_path = os.path.join(cfg._artifact_dir, task, cfg.dataset.name, subtask_name, final_hash_string)
+                    subtask_cfg._task_path = os.path.join(cfg._artifact_dir, task, cfg.dataset.name, subtask_name, dir_name)
                else:
-                    subtask_cfg._task_path = os.path.join(cfg._artifact_dir, task, subtask_name, final_hash_string, cfg.dataset.name)
-               
-               # The directory to save logs related to the graph_construction task
+                    subtask_cfg._task_path = os.path.join(cfg._artifact_dir, task, subtask_name, dir_name, cfg.dataset.name)
+
                subtask_cfg._logs_dir = os.path.join(subtask_cfg._task_path, "logs/")
                os.makedirs(subtask_cfg._logs_dir, exist_ok=True)
      
