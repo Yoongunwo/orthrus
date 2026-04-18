@@ -1,4 +1,5 @@
 import os
+import json
 import wandb
 import numpy as np
 from collections import defaultdict
@@ -46,8 +47,39 @@ def standard_evaluation(cfg, evaluation_fn):
         if stats["mcc"] > best_mcc:
             best_mcc = stats["mcc"]
             best_stats = stats
-        
+
     wandb.log(best_stats)
+    _save_eval_log(cfg, best_stats)
+
+
+def _save_eval_log(cfg, best_stats):
+    gnn = cfg.detection.gnn_training
+    drop = gnn.encoder.graph_attention.dropout
+    filename = (
+        f"{cfg.dataset.name}"
+        f"__ep{gnn.num_epochs}_lr{gnn.lr}"
+        f"_hid{gnn.node_hid_dim}_out{gnn.node_out_dim}"
+        f"_drop{drop}_ratio{cfg._train_ratio}"
+        f"_seed{cfg._seed}"
+        f".log"
+    )
+
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    log_dir = os.path.join(project_root, "log")
+    os.makedirs(log_dir, exist_ok=True)
+    log_path = os.path.join(log_dir, filename)
+
+    stats_lines = "\n".join(
+        f"  {k}: {v}" for k, v in best_stats.items() if not hasattr(v, '__module__')
+    )
+    entry = f"[{cfg._exp_start_time}]\n{stats_lines}\n"
+
+    with open(log_path, "a") as f:
+        if os.path.getsize(log_path) > 0:
+            f.write("\n----\n")
+        f.write(entry)
+
+    log(f"Eval log saved to {log_path}")
 
 
 def main(cfg):

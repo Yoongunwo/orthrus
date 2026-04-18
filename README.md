@@ -1,18 +1,23 @@
 # For Me
 
 Dependencies
+
 - python 3.9
 
 Install packages
+
 ```
 ./create_env.sh
 ```
 
 # My Process
+
 - Model Drift 확인을 위해 train_ratio argument 생성 및 그에 따른 모델 성능 평가
 
 ### Model Train
-Example
+
+Example:
+
 ```
 PYTHONHASHSEED=0 python src/orthrus.py CADETS_E3 \
   --detection.gnn_training.encoder.graph_attention.dropout=0.25 \
@@ -26,7 +31,9 @@ PYTHONHASHSEED=0 python src/orthrus.py CADETS_E3 \
 ```
 
 ### Model Evaluation
+
 Example:
+
 ```
 PYTHONHASHSEED=0 python src/orthrus.py CADETS_E3 \
   --from_weights \
@@ -39,8 +46,15 @@ PYTHONHASHSEED=0 python src/orthrus.py CADETS_E3 \
   --train_ratio=0.10
 ```
 
-### Fix Save Path
+### Evaluation Results
+
 Example:
+log/CADETS_E3\_\_ep20_lr0.001_hid256_out256_drop0.25_ratio0.1_seed4.log
+
+### Fix Save Path
+
+Example:
+
 ```
 artifacts/
   graph_construction/CADETS_E3/build_graphs/tw15.0__root/

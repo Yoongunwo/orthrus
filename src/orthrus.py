@@ -107,6 +107,7 @@ if __name__ == '__main__':
         raise argparse.ArgumentTypeError(f"Unknown args {unknown_args}")
 
     cfg = get_yml_cfg(args)
+    cfg._exp_start_time = time.strftime("%Y-%m-%d_%H-%M-%S")
     wandb.config.update(remove_underscore_keys(dict(cfg), keys_to_keep=["_task_path"]))
 
     main(cfg, args)
